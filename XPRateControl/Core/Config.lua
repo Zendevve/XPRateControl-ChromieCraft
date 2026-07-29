@@ -120,7 +120,48 @@ function XPRate.InitDB()
   if db.disparityThreshold == nil then db.disparityThreshold = 5 end
   if db.disparityRate      == nil then db.disparityRate      = 0.50 end
 
+  -- Priority Hierarchy Defaults (v1.5)
+  if type(db.priorityOrder) ~= "table" then
+    db.priorityOrder = {}
+    for i, key in ipairs(XPRate.DEFAULT_PRIORITY_ORDER) do
+      db.priorityOrder[i] = key
+    end
+  else
+    -- Validate and repair priorityOrder if corrupted or missing keys
+    local seenKeys = {}
+    local validOrder = {}
+    for _, key in ipairs(db.priorityOrder) do
+      if XPRate.MODULE_KEYS[key] and not seenKeys[key] then
+        seenKeys[key] = true
+        table.insert(validOrder, key)
+      end
+    end
+    for _, key in ipairs(XPRate.DEFAULT_PRIORITY_ORDER) do
+      if not seenKeys[key] then
+        seenKeys[key] = true
+        table.insert(validOrder, key)
+      end
+    end
+    db.priorityOrder = validOrder
+  end
+
   if db.firstRun == nil then db.firstRun = true end
 
   return db
 end
+
+-- Priority Hierarchy Module Key Definitions (v1.5)
+XPRate.MODULE_KEYS = {
+  quest     = { key = "quest",     name = "Quest NPC Interaction", dbKey = "autoQuest",     subTab = 5 },
+  zone      = { key = "zone",      name = "Zone / Instance Scaling", dbKey = "autoZone",      subTab = 7 },
+  disparity = { key = "disparity", name = "Party Level Disparity", dbKey = "autoDisparity", subTab = 3 },
+  group     = { key = "group",     name = "Party Size Scaling",    dbKey = "autoGroup",     subTab = 2 },
+  mob       = { key = "mob",       name = "Mob Difficulty Scaling",dbKey = "autoMob",       subTab = 4 },
+  rested    = { key = "rested",    name = "Auto Rested XP",        dbKey = "autoRested",    subTab = 1 },
+  bracket   = { key = "bracket",   name = "Level Bracket Scaling", dbKey = "autoBracket",   subTab = 6 },
+}
+
+XPRate.DEFAULT_PRIORITY_ORDER = {
+  "quest", "zone", "disparity", "group", "mob", "rested", "bracket"
+}
+

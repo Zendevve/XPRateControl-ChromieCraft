@@ -151,7 +151,89 @@ function XPRate.GetUnitDifficultyCategory(unit)
   end
 end
 
--- Priority Evaluator: strict hierarchy (Quest > Zone > Bracket > Mob > Party Disparity/Scaling > Rested)
+-- Helper to return module rank (1-7)
+function XPRate.GetModuleRank(key)
+  local db = XPRateControlDB
+  if not db or type(db.priorityOrder) ~= "table" then return 0 end
+  for i, k in ipairs(db.priorityOrder) do
+    if k == key then return i end
+  end
+  return 0
+end
+
+-- Helper to return module status: "ACTIVE", "READY", "DISABLED", rank (1-7), and detail string
+function XPRate.GetModuleStatus(key)
+  local db = XPRateControlDB
+  if not db then return "DISABLED", 0, "No DB" end
+
+  local rank = XPRate.GetModuleRank(key)
+  local modDef = XPRate.MODULE_KEYS and XPRate.MODULE_KEYS[key]
+  if not modDef then return "DISABLED", rank, "Unknown Module" end
+
+  local isEnabled = db[modDef.dbKey] == true
+  if not isEnabled then
+    return "DISABLED", rank, "Automation Disabled"
+  end
+
+  local gSize = XPRate.GetCurrentGroupSize()
+  local isRested = (GetRestState() == 1)
+  local mobCategory, mobLabel = XPRate.GetUnitDifficultyCategory("target")
+  local playerLevel = (UnitLevel and UnitLevel("player")) or 1
+
+  local isActive = false
+  local detailText = "Ready (Waiting for trigger)"
+
+  if key == "quest" then
+    if XPRate.isQuestNPCActive then
+      isActive = true
+      detailText = string.format("Quest NPC Open (%sx)", FormatRate(db.questRate or 2.0))
+    end
+  elseif key == "zone" then
+    local zoneCat, zoneLabel = XPRate.GetCurrentZoneType()
+    if zoneCat ~= "world" and db.zoneRates and db.zoneRates[zoneCat] ~= nil then
+      isActive = true
+      detailText = string.format("In %s (%sx)", zoneLabel, FormatRate(db.zoneRates[zoneCat]))
+    end
+  elseif key == "disparity" then
+    local disparity = XPRate.GetMaxPartyLevelDisparity()
+    local threshold = db.disparityThreshold or 5
+    if gSize > 1 and disparity > threshold then
+      isActive = true
+      detailText = string.format("%d Lvs Gap (%sx)", disparity, FormatRate(db.disparityRate or 0.5))
+    end
+  elseif key == "group" then
+    if gSize > 1 then
+      isActive = true
+      local mappedSize = math.min(gSize, 5)
+      local rate = (db.groupRates and db.groupRates[mappedSize]) or 1.00
+      detailText = string.format("%dP Group (%sx)", gSize, FormatRate(rate))
+    end
+  elseif key == "mob" then
+    if mobCategory and db.mobRates and db.mobRates[mobCategory] ~= nil then
+      isActive = true
+      detailText = string.format("Target: %s (%sx)", mobLabel, FormatRate(db.mobRates[mobCategory]))
+    end
+  elseif key == "rested" then
+    if isRested then
+      isActive = true
+      detailText = string.format("Rested Active (%sx)", FormatRate(db.restedRate or 2.0))
+    end
+  elseif key == "bracket" then
+    local bracket = XPRate.GetMatchingLevelBracket(playerLevel)
+    if bracket and bracket.rate ~= nil then
+      isActive = true
+      detailText = string.format("Lv %d-%d (%sx)", bracket.min or 1, bracket.max or 80, FormatRate(bracket.rate or 1.0))
+    end
+  end
+
+  if isActive then
+    return "ACTIVE", rank, detailText
+  else
+    return "READY", rank, detailText
+  end
+end
+
+-- Priority Evaluator: dynamic hierarchy based on db.priorityOrder
 function XPRate.EvaluateAutomation(silent, reason)
   local db = XPRateControlDB
   if not db then return end
@@ -166,57 +248,60 @@ function XPRate.EvaluateAutomation(silent, reason)
   local targetRate = nil
   local activeMode = nil
 
-  -- 1. Quest Interaction
-  if db.autoQuest and XPRate.isQuestNPCActive then
-    targetRate = db.questRate or 2.00
-    activeMode = "Quest Interaction"
+  local order = db.priorityOrder or XPRate.DEFAULT_PRIORITY_ORDER
 
-  -- 2. Zone / Instance Type (Instance/PvP overrides Rested/Mob)
-  elseif db.autoZone and XPRate.GetCurrentZoneType() ~= "world" and db.zoneRates and db.zoneRates[XPRate.GetCurrentZoneType()] ~= nil then
-    local zoneCat, zoneLabel = XPRate.GetCurrentZoneType()
-    targetRate = db.zoneRates[zoneCat]
-    activeMode = "Zone (" .. zoneLabel .. ")"
+  -- Evaluate in rank order (#1 to #7)
+  for rank, key in ipairs(order) do
+    local modDef = XPRate.MODULE_KEYS and XPRate.MODULE_KEYS[key]
+    if modDef and db[modDef.dbKey] then
+      if key == "quest" and XPRate.isQuestNPCActive then
+        targetRate = db.questRate or 2.00
+        activeMode = string.format("#%d Quest Interaction", rank)
+        break
+      elseif key == "zone" and XPRate.GetCurrentZoneType() ~= "world" and db.zoneRates and db.zoneRates[XPRate.GetCurrentZoneType()] ~= nil then
+        local zoneCat, zoneLabel = XPRate.GetCurrentZoneType()
+        targetRate = db.zoneRates[zoneCat]
+        activeMode = string.format("#%d Zone (%s)", rank, zoneLabel)
+        break
+      elseif key == "disparity" and gSize > 1 and XPRate.GetMaxPartyLevelDisparity() > (db.disparityThreshold or 5) then
+        targetRate = db.disparityRate or 0.50
+        activeMode = string.format("#%d Party Disparity (>%d Lvs)", rank, db.disparityThreshold or 5)
+        break
+      elseif key == "group" and gSize > 1 then
+        local mappedSize = math.min(gSize, 5)
+        targetRate = (db.groupRates and db.groupRates[mappedSize]) or 1.00
+        local stateText = (gSize >= 5) and "5P Group" or (gSize .. "P Group")
+        activeMode = string.format("#%d Party Scaling (%s)", rank, stateText)
+        break
+      elseif key == "mob" and mobCategory and db.mobRates and db.mobRates[mobCategory] ~= nil then
+        targetRate = db.mobRates[mobCategory]
+        activeMode = string.format("#%d Mob Difficulty (%s)", rank, mobLabel)
+        break
+      elseif key == "rested" and isRested then
+        targetRate = db.restedRate or 2.00
+        activeMode = string.format("#%d Auto Rested (Rested)", rank)
+        break
+      elseif key == "bracket" and XPRate.GetMatchingLevelBracket(playerLevel) and XPRate.GetMatchingLevelBracket(playerLevel).rate ~= nil then
+        local bracket = XPRate.GetMatchingLevelBracket(playerLevel)
+        targetRate = bracket.rate
+        activeMode = string.format("#%d Level Bracket (%d-%d)", rank, bracket.min or 1, bracket.max or 80)
+        break
+      end
+    end
+  end
 
-  -- 3. Party Disparity Protection (Overrides Rested/Mob)
-  elseif db.autoDisparity and gSize > 1 and XPRate.GetMaxPartyLevelDisparity() > (db.disparityThreshold or 5) then
-    targetRate = db.disparityRate or 0.50
-    activeMode = string.format("Party Disparity (>%d Levels)", db.disparityThreshold or 5)
-
-  -- 4. Party Size Scaling (Group > 1 overrides Rested/Mob)
-  elseif db.autoGroup and gSize > 1 then
-    local mappedSize = math.min(gSize, 5)
-    targetRate = (db.groupRates and db.groupRates[mappedSize]) or 1.00
-    local stateText = (gSize >= 5) and "5P Group" or (gSize .. "P Group")
-    activeMode = "Party Scaling (" .. stateText .. ")"
-
-  -- 5. Mob Difficulty (Overrides Rested)
-  elseif db.autoMob and mobCategory and db.mobRates and db.mobRates[mobCategory] ~= nil then
-    targetRate = db.mobRates[mobCategory]
-    activeMode = "Mob Difficulty (" .. mobLabel .. ")"
-
-  -- 6. Rested XP (Takes priority over Level Brackets and Fallbacks!)
-  elseif db.autoRested and isRested then
-    targetRate = db.restedRate or 2.00
-    activeMode = "Auto Rested (Rested)"
-
-  -- 7. Level Brackets (Only if not Rested/Mob/Party/Instance)
-  elseif db.autoBracket and XPRate.GetMatchingLevelBracket(playerLevel) and XPRate.GetMatchingLevelBracket(playerLevel).rate ~= nil then
-    local bracket = XPRate.GetMatchingLevelBracket(playerLevel)
-    targetRate = bracket.rate
-    activeMode = string.format("Level Bracket (%d-%d)", bracket.min or 1, bracket.max or 80)
-
-  -- 8. Fallbacks (If nothing active above triggered, use the base rates in order of importance)
-  elseif db.autoZone and db.zoneRates and db.zoneRates["world"] ~= nil then
-    targetRate = db.zoneRates["world"]
-    activeMode = "Zone (Open World)"
-
-  elseif db.autoGroup then
-    targetRate = (db.groupRates and db.groupRates[1]) or 1.00
-    activeMode = "Party Scaling (Solo)"
-
-  elseif db.autoRested then
-    targetRate = db.normalRate or 1.00
-    activeMode = "Auto Rested (Normal)"
+  -- Fallbacks if no specific trigger matched
+  if not targetRate then
+    if db.autoZone and db.zoneRates and db.zoneRates["world"] ~= nil then
+      targetRate = db.zoneRates["world"]
+      activeMode = "Zone (Open World)"
+    elseif db.autoGroup then
+      targetRate = (db.groupRates and db.groupRates[1]) or 1.00
+      activeMode = "Party Scaling (Solo)"
+    elseif db.autoRested then
+      targetRate = db.normalRate or 1.00
+      activeMode = "Auto Rested (Normal)"
+    end
   end
 
   if targetRate then
@@ -238,6 +323,7 @@ function XPRate.EvaluateAutomation(silent, reason)
 
   XPRate.UpdateAutomationStatus()
 end
+
 
 -- Updates status strings in the Automation tab UI
 function XPRate.UpdateAutomationStatus()

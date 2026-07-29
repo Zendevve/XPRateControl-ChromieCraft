@@ -14,9 +14,9 @@ local GetCurrentGroupSize     = XPRate.GetCurrentGroupSize
 
 local AutomationTabFrame = XPRate.AutomationTabFrame
 
-local autoSubTabSelected = 1 -- 1=Rested, 2=Party Size, 3=Disparity, 4=Mob, 5=Quest, 6=Bracket, 7=Zone
+local autoSubTabSelected = 1 -- 1=Rested, 2=Party Size, 3=Disparity, 4=Mob, 5=Quest, 6=Bracket, 7=Zone, 8=Priority
 
--- Sub-Frames Container Setup (7 frames)
+-- Sub-Frames Container Setup (8 frames)
 local AutoRestedSubFrame = CreateFrame("Frame", nil, AutomationTabFrame)
 AutoRestedSubFrame:SetSize(308, 172)
 AutoRestedSubFrame:SetPoint("TOPLEFT", AutomationTabFrame, "TOPLEFT", 0, -32)
@@ -51,6 +51,11 @@ AutoZoneSubFrame:SetSize(308, 172)
 AutoZoneSubFrame:SetPoint("TOPLEFT", AutomationTabFrame, "TOPLEFT", 0, -32)
 AutoZoneSubFrame:Hide()
 
+local AutoPrioritySubFrame = CreateFrame("Frame", nil, AutomationTabFrame)
+AutoPrioritySubFrame:SetSize(308, 172)
+AutoPrioritySubFrame:SetPoint("TOPLEFT", AutomationTabFrame, "TOPLEFT", 0, -32)
+AutoPrioritySubFrame:Hide()
+
 local subTabFrames = {
   AutoRestedSubFrame,
   AutoGroupSubFrame,
@@ -58,10 +63,11 @@ local subTabFrames = {
   AutoMobSubFrame,
   AutoQuestSubFrame,
   AutoBracketSubFrame,
-  AutoZoneSubFrame
+  AutoZoneSubFrame,
+  AutoPrioritySubFrame
 }
 
--- Sub-tab configurations (7 options)
+-- Sub-tab configurations (8 options)
 local autoSubTabConfig = {
   { name = "AUTO RESTED XP",             icon = "Interface\\AddOns\\XPRateControl\\Textures\\Icon_AutoRested", color = CLR.green },
   { name = "PARTY SIZE SCALING",         icon = "Interface\\AddOns\\XPRateControl\\Textures\\Icon_AutoParty",  color = CLR.cyan },
@@ -70,6 +76,7 @@ local autoSubTabConfig = {
   { name = "QUEST TURN-IN SCALING",      icon = "Interface\\GossipFrame\\AvailableQuestIcon",                 color = CLR.gold },
   { name = "LEVEL BRACKET SCALING",      icon = "Interface\\Icons\\Spell_Holy_PrayerOfFortitude",            color = CLR.gold },
   { name = "ZONE / INSTANCE SCALING",    icon = "Interface\\Icons\\Spell_Arcane_PortalIronforge",            color = CLR.cyan },
+  { name = "PRIORITY HIERARCHY",         icon = "Interface\\Icons\\Spell_Holy_MindVision",                   color = CLR.gold },
 }
 
 -- Header Dropdown Container Button
@@ -109,9 +116,9 @@ coverFrame:SetAllPoints(UIParent)
 coverFrame:SetFrameStrata("FULLSCREEN_DIALOG")
 coverFrame:Hide()
 
--- Custom Dropdown Popup Menu Frame (308, 182 for 7 options)
+-- Custom Dropdown Popup Menu Frame (308, 207 for 8 options)
 local dropdownMenu = CreateFrame("Frame", "XPRateAutoDropdownMenu", AutomationTabFrame)
-dropdownMenu:SetSize(308, 182)
+dropdownMenu:SetSize(308, 207)
 dropdownMenu:SetPoint("TOPLEFT", headerBtn, "BOTTOMLEFT", 0, -2)
 dropdownMenu:SetFrameStrata("FULLSCREEN_DIALOG")
 dropdownMenu:SetFrameLevel(coverFrame:GetFrameLevel() + 1)
@@ -135,6 +142,16 @@ coverFrame:SetScript("OnClick", HideDropdownMenu)
 
 local dropdownOptionBtns = {}
 
+local subTabToKey = {
+  [1] = "rested",
+  [2] = "group",
+  [3] = "disparity",
+  [4] = "mob",
+  [5] = "quest",
+  [6] = "bracket",
+  [7] = "zone"
+}
+
 function XPRate.UpdateDropdownCheckmarks()
   if not XPRateControlDB then return end
   local states = {
@@ -149,16 +166,25 @@ function XPRate.UpdateDropdownCheckmarks()
 
   for i, optBtn in ipairs(dropdownOptionBtns) do
     if optBtn.statusTag then
-      if states[i] then
-        optBtn.statusTag:SetText("[v]")
-        optBtn.statusTag:SetTextColor(CLR.green[1], CLR.green[2], CLR.green[3])
+      if i <= 7 then
+        local key = subTabToKey[i]
+        local rank = XPRate.GetModuleRank and XPRate.GetModuleRank(key) or 0
+        local rankStr = (rank > 0) and string.format("[#%d] ", rank) or ""
+        if states[i] then
+          optBtn.statusTag:SetText(rankStr .. "[v]")
+          optBtn.statusTag:SetTextColor(CLR.green[1], CLR.green[2], CLR.green[3])
+        else
+          optBtn.statusTag:SetText(rankStr .. "[ ]")
+          optBtn.statusTag:SetTextColor(CLR.dim[1], CLR.dim[2], CLR.dim[3], 0.5)
+        end
       else
-        optBtn.statusTag:SetText("[ ]")
-        optBtn.statusTag:SetTextColor(CLR.dim[1], CLR.dim[2], CLR.dim[3], 0.5)
+        optBtn.statusTag:SetText("[#1-7]")
+        optBtn.statusTag:SetTextColor(CLR.gold[1], CLR.gold[2], CLR.gold[3])
       end
     end
   end
 end
+
 
 local function SelectAutomationSubTab(tabIndex)
   autoSubTabSelected = tabIndex
@@ -1040,6 +1066,186 @@ function XPRate.updateZoneRows()
   if updateZoneRow then updateZoneRow() end
 end
 
+-- ==================== Priority Hierarchy Sub-Tab UI ====================
+local priorityDesc = AutoPrioritySubFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+priorityDesc:SetPoint("TOPLEFT", AutoPrioritySubFrame, "TOPLEFT", 6, -2)
+priorityDesc:SetText("Rule Precedence Order (Top rules override lower rules):")
+priorityDesc:SetTextColor(CLR.dim[1], CLR.dim[2], CLR.dim[3])
+
+local priorityRows = {}
+
+for i = 1, 7 do
+  local row = CreateFrame("Frame", nil, AutoPrioritySubFrame)
+  row:SetSize(296, 17)
+  row:SetPoint("TOPLEFT", AutoPrioritySubFrame, "TOPLEFT", 6, -16 - (i-1)*18)
+
+  row:SetBackdrop({
+    bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true, tileSize = 6, edgeSize = 6,
+    insets = { left = 1, right = 1, top = 1, bottom = 1 }
+  })
+  row:SetBackdropColor(CLR.btnBg[1], CLR.btnBg[2], CLR.btnBg[3], 0.6)
+  row:SetBackdropBorderColor(CLR.btnEdge[1], CLR.btnEdge[2], CLR.btnEdge[3], 0.4)
+
+  -- Rank Badge (#1..#7)
+  local rankBadge = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  rankBadge:SetPoint("LEFT", row, "LEFT", 6, 0)
+  rankBadge:SetText(string.format("#%d", i))
+  row.rankBadge = rankBadge
+
+  -- Up Button (▲)
+  local btnUp = MakeButton(row, 14, 14, CLR.btnBg, CLR.btnEdge)
+  btnUp:SetPoint("LEFT", rankBadge, "RIGHT", 8, 0)
+  local tUp = btnUp:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  tUp:SetPoint("CENTER", 0, 1)
+  tUp:SetText("^")
+  tUp:SetTextColor(CLR.cyan[1], CLR.cyan[2], CLR.cyan[3])
+  btnUp.text = tUp
+  row.btnUp = btnUp
+
+  -- Down Button (▼)
+  local btnDown = MakeButton(row, 14, 14, CLR.btnBg, CLR.btnEdge)
+  btnDown:SetPoint("LEFT", btnUp, "RIGHT", 2, 0)
+  local tDown = btnDown:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  tDown:SetPoint("CENTER", 0, -1)
+  tDown:SetText("v")
+  tDown:SetTextColor(CLR.cyan[1], CLR.cyan[2], CLR.cyan[3])
+  btnDown.text = tDown
+  row.btnDown = btnDown
+
+  -- Module Name
+  local modName = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  modName:SetPoint("LEFT", btnDown, "RIGHT", 8, 0)
+  row.modName = modName
+
+  -- Live Status Tag
+  local statusTag = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  statusTag:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+  row.statusTag = statusTag
+
+  btnUp:SetScript("OnClick", function()
+    local db = XPRateControlDB
+    if not db or type(db.priorityOrder) ~= "table" then return end
+    if i > 1 then
+      local tmp = db.priorityOrder[i]
+      db.priorityOrder[i] = db.priorityOrder[i-1]
+      db.priorityOrder[i-1] = tmp
+      XPRate.lastAppliedRate = nil
+      XPRate.lastAppliedMode = nil
+      EvaluateAutomation(false, "Priority Shifted Up")
+      if XPRate.UpdateAutomationTabUI then XPRate.UpdateAutomationTabUI() end
+    end
+  end)
+
+  btnDown:SetScript("OnClick", function()
+    local db = XPRateControlDB
+    if not db or type(db.priorityOrder) ~= "table" then return end
+    if i < 7 then
+      local tmp = db.priorityOrder[i]
+      db.priorityOrder[i] = db.priorityOrder[i+1]
+      db.priorityOrder[i+1] = tmp
+      XPRate.lastAppliedRate = nil
+      XPRate.lastAppliedMode = nil
+      EvaluateAutomation(false, "Priority Shifted Down")
+      if XPRate.UpdateAutomationTabUI then XPRate.UpdateAutomationTabUI() end
+    end
+  end)
+
+  priorityRows[i] = row
+end
+
+-- Reset Button at Bottom
+local resetPriorityBtn = MakeButton(AutoPrioritySubFrame, 160, 20, CLR.btnBg, CLR.btnEdge)
+resetPriorityBtn:SetPoint("BOTTOMLEFT", AutoPrioritySubFrame, "BOTTOMLEFT", 6, 2)
+
+local resetPriorityText = resetPriorityBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+resetPriorityText:SetPoint("CENTER")
+resetPriorityText:SetText("Reset Default Priority")
+resetPriorityText:SetTextColor(CLR.white[1], CLR.white[2], CLR.white[3])
+
+resetPriorityBtn:SetScript("OnClick", function()
+  local db = XPRateControlDB
+  if not db then return end
+  db.priorityOrder = {}
+  for idx, k in ipairs(XPRate.DEFAULT_PRIORITY_ORDER) do
+    db.priorityOrder[idx] = k
+  end
+  XPRate.lastAppliedRate = nil
+  XPRate.lastAppliedMode = nil
+  EvaluateAutomation(false, "Priority Reset")
+  if XPRate.UpdateAutomationTabUI then XPRate.UpdateAutomationTabUI() end
+end)
+
+resetPriorityBtn:SetScript("OnEnter", function(self)
+  self:SetBackdropColor(CLR.btnHover[1], CLR.btnHover[2], CLR.btnHover[3], 1)
+  ShowTooltip(self, "Restores default rule precedence order:\nQuest > Zone > Disparity > Group > Mob > Rested > Bracket")
+end)
+resetPriorityBtn:SetScript("OnLeave", function(self)
+  self:SetBackdropColor(CLR.btnBg[1], CLR.btnBg[2], CLR.btnBg[3], 1)
+  HideTooltip()
+end)
+
+function XPRate.UpdatePriorityRows()
+  local db = XPRateControlDB
+  if not db or type(db.priorityOrder) ~= "table" then return end
+
+  for i = 1, 7 do
+    local key = db.priorityOrder[i]
+    local modDef = XPRate.MODULE_KEYS and XPRate.MODULE_KEYS[key]
+    local row = priorityRows[i]
+
+    if row and modDef then
+      row.modName:SetText(modDef.name)
+
+      -- Rank Badge formatting
+      if i == 1 then
+        row.rankBadge:SetTextColor(CLR.gold[1], CLR.gold[2], CLR.gold[3])
+      elseif i <= 3 then
+        row.rankBadge:SetTextColor(CLR.cyan[1], CLR.cyan[2], CLR.cyan[3])
+      else
+        row.rankBadge:SetTextColor(CLR.dim[1], CLR.dim[2], CLR.dim[3])
+      end
+
+      -- Up/Down button states
+      if i == 1 then
+        row.btnUp:Disable()
+        row.btnUp.text:SetTextColor(CLR.dim[1], CLR.dim[2], CLR.dim[3], 0.3)
+      else
+        row.btnUp:Enable()
+        row.btnUp.text:SetTextColor(CLR.cyan[1], CLR.cyan[2], CLR.cyan[3], 1)
+      end
+
+      if i == 7 then
+        row.btnDown:Disable()
+        row.btnDown.text:SetTextColor(CLR.dim[1], CLR.dim[2], CLR.dim[3], 0.3)
+      else
+        row.btnDown:Enable()
+        row.btnDown.text:SetTextColor(CLR.cyan[1], CLR.cyan[2], CLR.cyan[3], 1)
+      end
+
+      -- Fetch Status Tag & Text
+      local status, rank, detail = XPRate.GetModuleStatus(key)
+      if status == "ACTIVE" then
+        row.statusTag:SetText("[ACTIVE]")
+        row.statusTag:SetTextColor(CLR.green[1], CLR.green[2], CLR.green[3])
+        row:SetBackdropColor(CLR.accentBg[1], CLR.accentBg[2], CLR.accentBg[3], 0.4)
+        row:SetBackdropBorderColor(CLR.green[1], CLR.green[2], CLR.green[3], 0.6)
+      elseif status == "READY" then
+        row.statusTag:SetText("[READY]")
+        row.statusTag:SetTextColor(CLR.cyan[1], CLR.cyan[2], CLR.cyan[3])
+        row:SetBackdropColor(CLR.btnBg[1], CLR.btnBg[2], CLR.btnBg[3], 0.6)
+        row:SetBackdropBorderColor(CLR.btnEdge[1], CLR.btnEdge[2], CLR.btnEdge[3], 0.4)
+      else
+        row.statusTag:SetText("[OFF]")
+        row.statusTag:SetTextColor(CLR.dim[1], CLR.dim[2], CLR.dim[3], 0.6)
+        row:SetBackdropColor(CLR.btnBg[1], CLR.btnBg[2], CLR.btnBg[3], 0.3)
+        row:SetBackdropBorderColor(CLR.btnEdge[1], CLR.btnEdge[2], CLR.btnEdge[3], 0.2)
+      end
+    end
+  end
+end
+
 -- ==================== Master UI Refresh Function ====================
 function XPRate.UpdateAutomationTabUI()
   local db = XPRateControlDB
@@ -1054,7 +1260,7 @@ function XPRate.UpdateAutomationTabUI()
   if XPRate.bracketCheckbox then XPRate.bracketCheckbox:SetChecked(db.autoBracket and true or false) end
   if XPRate.zoneCheckbox then XPRate.zoneCheckbox:SetChecked(db.autoZone and true or false) end
 
-  -- 2. Refresh Dropdown Menu Checkmarks (1..7)
+  -- 2. Refresh Dropdown Menu Checkmarks (1..8)
   if XPRate.UpdateDropdownCheckmarks then XPRate.UpdateDropdownCheckmarks() end
 
   -- 3. Refresh Sub-Tab Control Rows / Inputs
@@ -1067,6 +1273,7 @@ function XPRate.UpdateAutomationTabUI()
   if XPRate.updateQuestRow then XPRate.updateQuestRow() end
   if XPRate.updateBracketRows then XPRate.updateBracketRows() end
   if XPRate.updateZoneRows then XPRate.updateZoneRows() end
+  if XPRate.UpdatePriorityRows then XPRate.UpdatePriorityRows() end
 
   -- 4. Refresh Button Highlights
   if XPRate.UpdatePartyButtonsUI then XPRate.UpdatePartyButtonsUI() end
@@ -1074,9 +1281,10 @@ function XPRate.UpdateAutomationTabUI()
   if XPRate.UpdateBracketButtonsUI then XPRate.UpdateBracketButtonsUI() end
   if XPRate.UpdateZoneButtonsUI then XPRate.UpdateZoneButtonsUI() end
 
-  -- 5. Refresh Status Texts across all 7 Sub-Tabs
+  -- 5. Refresh Status Texts across Sub-Tabs
   if XPRate.UpdateAutomationStatus then XPRate.UpdateAutomationStatus() end
 end
 
 -- Initialize default selection (1 = Rested XP)
 SelectAutomationSubTab(1)
+

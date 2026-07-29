@@ -4,7 +4,7 @@ A clean, modern GUI addon for managing experience rate adjustments and Joyous Jo
 
 ![WoW Version](https://img.shields.io/badge/WoW-3.3.5a-blue?style=flat-square)
 ![Interface](https://img.shields.io/badge/Interface-30300-blue?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.4-green?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.5-green?style=flat-square)
 ![License](https://img.shields.io/badge/License-All_Rights_Reserved-red?style=flat-square)
 
 ---
@@ -24,8 +24,9 @@ A clean, modern GUI addon for managing experience rate adjustments and Joyous Jo
   - **Mob Difficulty Scaling** — Auto-adjusts rate depending on targeted enemy difficulty color (Gray, Green, Yellow, Orange/Red).
   - **Quest Turn-in Automation** — Automatically switches to a designated rate (default `2.00x`) when interacting with Quest NPCs and restores previous rate on close.
   - **Auto Rested XP** — Automatically switches rates when Rested state is active or inactive.
-- **Tiered Priority Hierarchy Evaluator** — Prevents automation conflicts using strict priority order: `Quest NPC > Zone/Instance > Level Bracket > Mob Difficulty > Party Disparity Protection > Party Size Scaling > Rested XP`.
+- **User-Configurable Priority Hierarchy Evaluator (v1.5)** — Fully customize which automation module takes precedence over another via an interactive 8th sub-tab (`8. PRIORITY HIERARCHY`) with Move Up / Move Down buttons, rank badges (`#1`–`#7`), live status tags (`ACTIVE`, `READY`, `OFF`), and rank notifications (e.g. `Auto (#1 Quest) -> 2.00x`).
 - **Dedicated Settings Tab & Quiet Automation Mode (v1.4)** — Dedicated 4th top-level navigation tab providing clean, uncrowded controls for Notification Preferences (Chat, Toasts, Quiet Automation), Minimap Icon visibility, Master Automation Toggle, and Reset Defaults.
+
 - **Escape Key Reversion** — Pressing ESC inside any rate input field cancels the edit, reverting the text and focus without applying unintended changes.
 - **Window Position Persistence** — Panel drag position is saved in `XPRateControlDB` and restored on login.
 - **Minimap Icon State** — Hourglass icon tint updates dynamically to match active rate color. Flashes orange when automation switches rates.
