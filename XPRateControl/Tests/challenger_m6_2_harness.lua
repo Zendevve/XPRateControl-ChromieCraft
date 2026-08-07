@@ -70,6 +70,11 @@ function CreateFrame(frameType, name, parent, template)
         SetJustifyH = function() end,
         SetJustifyV = function() end,
         SetAllPoints = function() end,
+        shown = true,
+        Show = function(s) s.shown = true end,
+        Hide = function(s) s.shown = false end,
+        IsShown = function(s) return s.shown end,
+        SetShown = function(s, v) s.shown = v and true or false end,
       }
       table.insert(self.fontstrings, fs)
       return fs
@@ -103,6 +108,8 @@ function CreateFrame(frameType, name, parent, template)
     SetBackdropBorderColor = function(self, r, g, b, a) self.edgeColor = {r, g, b, a} end,
     Show = function(self) self.shown = true end,
     Hide = function(self) self.shown = false end,
+    Disable = function() end,
+    Enable = function() end,
     IsShown = function(self) return self.shown end,
     SetShown = function(self, val) self.shown = val and true or false end,
     SetChecked = function(self, val) self.checked = val and true or false end,
@@ -219,6 +226,10 @@ end
 
 function GetXPExhaustion()
   return mockXPExhaustion
+end
+
+function GetRestState()
+  return (mockXPExhaustion or 0) > 0 and 1 or 2
 end
 
 function strtrim(s)

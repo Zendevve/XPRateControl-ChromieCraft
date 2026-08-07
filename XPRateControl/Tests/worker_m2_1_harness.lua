@@ -112,6 +112,10 @@ function GetXPExhaustion()
   return mockXPExhaustion
 end
 
+function GetRestState()
+  return (mockXPExhaustion or 0) > 0 and 1 or 2
+end
+
 QuestDifficultyColors = {
   green = "green_color",
   trivial = "gray_color",

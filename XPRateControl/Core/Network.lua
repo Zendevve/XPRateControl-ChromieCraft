@@ -17,6 +17,22 @@ function XPRate.ClampRate(val)
   return val
 end
 
+function XPRate.IsJJEnabled()
+  if type(XPRateControlDB) ~= "table" then return false end
+  return XPRateControlDB.jjEnabled == true
+end
+
+function XPRate.EffectiveRate(rate)
+  if rate <= 0 then return 0 end
+  if XPRate.IsJJEnabled() then
+    -- Server base rates are x1/x2 only (.weekendxp rate 1); with JJ active the
+    -- effective rate snaps to the nearest canonical base x 1.5 (1.50x or 3.00x).
+    local base = (rate >= 1.5) and 2 or 1
+    return base * (XPRate.JJ_MULT or 1.5)
+  end
+  return rate
+end
+
 function XPRate.RateColor(val)
   if val <= 0 then return CLR.red end
   if val < 1 then return CLR.dim end
@@ -28,7 +44,7 @@ end
 function XPRate.RateLabel(val)
   if val <= 0 then return "OFF" end
   if val == 1 then return "Blizzlike" end
-  if val == 2 then return "Maximum" end
+  if val >= 2 then return "Maximum" end
   return ""
 end
 
@@ -57,7 +73,7 @@ function XPRate.ApplyRate(rate, silent)
   end
 
   if XPRateMinimapButtonBorder then
-    local rc = XPRate.RateColor(rate)
+    local rc = XPRate.RateColor(XPRate.EffectiveRate(rate))
     XPRateMinimapButtonBorder:SetVertexColor(rc[1], rc[2], rc[3])
   end
 
@@ -69,6 +85,11 @@ function XPRate.ApplyRate(rate, silent)
     XPRate.ShowToast(string.format("Sent %sx [OK]", XPRate.FormatRate(rate)), false)
   end
   if showChat then
-    XPRate.PrintMessage("XP rate set to " .. XPRate.FormatRate(rate) .. "x")
+    local eff = XPRate.EffectiveRate(rate)
+    if eff ~= rate then
+      XPRate.PrintMessage("XP rate set to " .. XPRate.FormatRate(rate) .. "x (" .. XPRate.FormatRate(eff) .. "x with Joyous Journeys)")
+    else
+      XPRate.PrintMessage("XP rate set to " .. XPRate.FormatRate(rate) .. "x")
+    end
   end
 end

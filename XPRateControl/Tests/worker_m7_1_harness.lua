@@ -63,6 +63,13 @@ function CreateFrame(frameType, name, parent, template)
         SetJustifyH = function() end,
         SetJustifyV = function() end,
         SetAllPoints = function() end,
+        shown = true,
+        Show = function(s) s.shown = true end,
+        Hide = function(s) s.shown = false end,
+        IsShown = function(s) return s.shown end,
+        SetShown = function(s, v) s.shown = v and true or false end,
+        GetStringWidth = function(s) return 10 end,
+        GetStringHeight = function(s) return 10 end,
       }
       table.insert(self.fontstrings, fs)
       return fs
@@ -156,6 +163,7 @@ IsInInstance = function() return false, "none" end
 GetRealZoneText = function() return "Elwynn Forest" end
 GetQuestDifficultyColor = function(level) return {r=1, g=1, b=1} end
 GetXPExhaustion = function() return 0 end
+GetRestState = function() return 2 end
 SendChatMessage = function() end
 
 GameTooltip = {

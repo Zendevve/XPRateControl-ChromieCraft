@@ -9,6 +9,8 @@ local DEFAULT_RATE        = XPRate.DEFAULT_RATE
 local FormatRate          = XPRate.FormatRate
 local ClampRate           = XPRate.ClampRate
 local RateColor           = XPRate.RateColor
+local EffectiveRate       = XPRate.EffectiveRate
+local IsJJEnabled         = XPRate.IsJJEnabled
 local ApplyRate            = XPRate.ApplyRate
 local ShowTooltip          = XPRate.ShowTooltip
 local HideTooltip          = XPRate.HideTooltip
@@ -96,6 +98,14 @@ local function UpdateTagChip(rate)
   tagChip:SetBackdropBorderColor(rc[1], rc[2], rc[3], 0.7)
 end
 
+-- Joyous Journeys badge
+local jjBadge = heroCard:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+jjBadge:SetPoint("TOPRIGHT", heroCard, "TOPRIGHT", -6, -6)
+jjBadge:SetText("JJ x1.5 ACTIVE")
+jjBadge:SetTextColor(CLR.gold[1], CLR.gold[2], CLR.gold[3])
+jjBadge:Hide()
+XPRate.jjBadge = jjBadge
+
 -- Custom Slider
 local slider = CreateFrame("Slider", "XPRateSliderWidget", RatesTabFrame)
 XPRate.XPRateSliderWidget = slider
@@ -165,6 +175,8 @@ function XPRate.UpdateUIFromValue(value, source)
   isUpdating = true
 
   local valNum = ClampRate(tonumber(value) or DEFAULT_RATE)
+  local eff = EffectiveRate(valNum)
+  local effRc = RateColor(eff)
   local formatted = FormatRate(valNum)
   local rc = RateColor(valNum)
 
@@ -175,13 +187,13 @@ function XPRate.UpdateUIFromValue(value, source)
     editbox:SetText(formatted)
   end
 
-  valueText:SetText(formatted .. "x")
-  valueText:SetTextColor(rc[1], rc[2], rc[3])
+  valueText:SetText(FormatRate(eff) .. "x")
+  valueText:SetTextColor(effRc[1], effRc[2], effRc[3])
 
-  trackFill:SetVertexColor(rc[1], rc[2], rc[3], 0.9)
-  thumb:SetVertexColor(rc[1], rc[2], rc[3])
+  trackFill:SetVertexColor(effRc[1], effRc[2], effRc[3], 0.9)
+  thumb:SetVertexColor(effRc[1], effRc[2], effRc[3])
 
-  UpdateTagChip(valNum)
+  UpdateTagChip(eff)
 
   sliderBubbleText:SetText(formatted .. "x")
   sliderBubbleText:SetTextColor(rc[1], rc[2], rc[3])
@@ -191,6 +203,14 @@ function XPRate.UpdateUIFromValue(value, source)
     XPRate.TriggerPulse()
   end
   lastUIValue = valNum
+
+  if XPRate.jjBadge then
+    if IsJJEnabled() then
+      XPRate.jjBadge:Show()
+    else
+      XPRate.jjBadge:Hide()
+    end
+  end
 
   isUpdating = false
 end
@@ -214,7 +234,9 @@ end)
 
 slider:SetScript("OnEnter", function(self)
   sliderBubble:Show()
-  ShowTooltip(self, "Drag to set XP rate (0x - 2x)")
+  local tip = "Drag to set XP rate (0x - 2x)"
+  if IsJJEnabled() then tip = tip .. " | JJ x1.5 active" end
+  ShowTooltip(self, tip)
 end)
 slider:SetScript("OnLeave", function(self)
   sliderBubble:Hide()
@@ -259,7 +281,9 @@ editbox:SetScript("OnEditFocusLost", function(self)
 end)
 
 editbox:SetScript("OnEnter", function(self)
-  ShowTooltip(self, "Type a value (0.00 - 2.00), press Enter")
+  local tip = "Type a value (0.00 - 2.00), press Enter"
+  if IsJJEnabled() then tip = tip .. " | JJ x1.5 active" end
+  ShowTooltip(self, tip)
 end)
 editbox:SetScript("OnLeave", HideTooltip)
 

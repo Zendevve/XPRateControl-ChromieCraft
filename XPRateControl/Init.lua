@@ -254,8 +254,12 @@ SlashCmdList["XPRATECONTROL"] = function(msg)
           (db.quietAuto == true) and "|cff20cc50ON|r" or "|cffcc3535OFF|r"))
         if XPRate.lastAppliedRate then
           local formatFn = XPRate.FormatRate
-          printFn(string.format("  Active Rate: |cff00ccff%s|rx via |cff00ff00%s|r", 
-            formatFn and formatFn(XPRate.lastAppliedRate) or tostring(XPRate.lastAppliedRate),
+          local effFn = XPRate.EffectiveRate
+          local eff = (effFn and effFn(XPRate.lastAppliedRate)) or XPRate.lastAppliedRate
+          local jjTag = (XPRate.IsJJEnabled and XPRate.IsJJEnabled()) and " [JJ x1.5]" or ""
+          printFn(string.format("  Active Rate: |cff00ccff%s|rx%s via |cff00ff00%s|r",
+            (formatFn and formatFn(eff)) or tostring(eff),
+            jjTag,
             XPRate.lastAppliedMode or "Manual"))
         end
       end
@@ -425,8 +429,12 @@ SlashCmdList["XPRATECONTROL"] = function(msg)
         (db.quietAuto == true) and "|cff20cc50ON|r" or "|cffcc3535OFF|r"))
       if XPRate.lastAppliedRate then
         local formatFn = XPRate.FormatRate
-        printFn(string.format("  Active Rate: |cff00ccff%s|rx via |cff00ff00%s|r", 
-          formatFn and formatFn(XPRate.lastAppliedRate) or tostring(XPRate.lastAppliedRate),
+        local effFn = XPRate.EffectiveRate
+        local eff = (effFn and effFn(XPRate.lastAppliedRate)) or XPRate.lastAppliedRate
+        local jjTag = (XPRate.IsJJEnabled and XPRate.IsJJEnabled()) and " [JJ x1.5]" or ""
+        printFn(string.format("  Active Rate: |cff00ccff%s|rx%s via |cff00ff00%s|r",
+          (formatFn and formatFn(eff)) or tostring(eff),
+          jjTag,
           XPRate.lastAppliedMode or "Manual"))
       end
     end

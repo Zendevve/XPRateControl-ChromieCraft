@@ -58,6 +58,11 @@ function CreateFrame(frameType, name, parent, template)
         SetJustifyH = function() end,
         SetAllPoints = function() end,
         SetJustifyV = function() end,
+        shown = true,
+        Show = function(s) s.shown = true end,
+        Hide = function(s) s.shown = false end,
+        IsShown = function(s) return s.shown end,
+        SetShown = function(s, v) s.shown = v and true or false end,
       }
       table.insert(self.fontstrings, fs)
       return fs
@@ -92,6 +97,8 @@ function CreateFrame(frameType, name, parent, template)
     SetBackdropBorderColor = function(self, r, g, b, a) self.edgeColor = {r, g, b, a} end,
     Show = function(self) self.shown = true end,
     Hide = function(self) self.shown = false end,
+    Disable = function() end,
+    Enable = function() end,
     IsShown = function(self) return self.shown end,
     SetShown = function(self, val) self.shown = val and true or false end,
     SetChecked = function(self, val) self.checked = val and true or false end,
@@ -150,6 +157,7 @@ GetNumRaidMembers = function() return 0 end
 IsInInstance = function() return false, "none" end
 GetRealZoneText = function() return "Elwynn Forest" end
 GetXPExhaustion = function() return 1000 end -- Rested active for automation tests
+GetRestState = function() return 1 end -- Rested active (matches GetXPExhaustion mock)
 UnitXPMax = function(unit) return 10000 end
 SendChatMessage = function() end
 UIDropDownMenu_SetWidth = function() end

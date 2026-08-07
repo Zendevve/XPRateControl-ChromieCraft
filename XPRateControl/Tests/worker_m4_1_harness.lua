@@ -54,6 +54,11 @@ function CreateFrame(frameType, name, parent, template)
         SetTextColor = function(s, r, g, b, a) s.r=r; s.g=g; s.b=b; s.a=a or 1 end,
         SetPoint = function() end,
         SetJustifyH = function() end,
+        shown = true,
+        Show = function(s) s.shown = true end,
+        Hide = function(s) s.shown = false end,
+        IsShown = function(s) return s.shown end,
+        SetShown = function(s, v) s.shown = v and true or false end,
       }
       table.insert(self.fontstrings, fs)
       return fs

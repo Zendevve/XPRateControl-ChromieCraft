@@ -15,7 +15,7 @@ CreateSectionHeader(BuffsTabFrame, "JOYOUS JOURNEYS", "Interface\\AddOns\\XPRate
 
 local jjDesc = BuffsTabFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 jjDesc:SetPoint("TOPLEFT", BuffsTabFrame, "TOPLEFT", 12, -30)
-jjDesc:SetText("50% XP buff for characters below max level")
+jjDesc:SetText("50% XP buff - stacks with your rate x1.5 (2.00x -> 3.00x max)")
 jjDesc:SetTextColor(CLR.dim[1], CLR.dim[2], CLR.dim[3])
 
 -- Visual Card Hero
@@ -65,6 +65,13 @@ function XPRate.UpdateJJUI(enabled)
     jjStatusText:SetText("BUFF INACTIVE")
     jjStatusText:SetTextColor(CLR.dim[1], CLR.dim[2], CLR.dim[3])
   end
+  if XPRate.jjBadge then
+    if enabled then
+      XPRate.jjBadge:Show()
+    else
+      XPRate.jjBadge:Hide()
+    end
+  end
 end
 
 jjCheckbox:SetScript("OnClick", function(self)
@@ -74,6 +81,7 @@ jjCheckbox:SetScript("OnClick", function(self)
     XPRateControlDB.jjEnabled = enabled
   end
   XPRate.UpdateJJUI(enabled)
+  if XPRate.UpdateUIFromValue then XPRate.UpdateUIFromValue((XPRateControlDB and XPRateControlDB.lastRate) or (XPRate.DEFAULT_RATE or 1.0), nil) end
   ShowToast(enabled and "JJ Enabled [OK]" or "JJ Disabled [OK]", false)
   PrintMessage("Joyous Journeys " .. (enabled and "|cff20cc50enabled|r" or "|cffcc3535disabled|r"))
 end)

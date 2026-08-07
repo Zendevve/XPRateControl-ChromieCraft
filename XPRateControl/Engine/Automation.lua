@@ -315,8 +315,10 @@ function XPRate.EvaluateAutomation(silent, reason)
       if not effectiveSilent then
         if XPRate.FlashMinimapButton then XPRate.FlashMinimapButton(targetRate) end
         local causeMsg = reason and (" [" .. reason .. "]") or ""
-        PrintMessage("|cff00ff00Auto-Switched|r -> " .. FormatRate(targetRate) .. "x via |cff00ccff" .. activeMode .. "|r" .. causeMsg)
-        ShowToast(string.format("Auto (%s) -> %sx", activeMode, FormatRate(targetRate)), false)
+        local eff = XPRate.EffectiveRate and XPRate.EffectiveRate(targetRate) or targetRate
+        local effSuffix = (eff ~= targetRate) and (" (" .. FormatRate(eff) .. "x w/ JJ)") or ""
+        PrintMessage("|cff00ff00Auto-Switched|r -> " .. FormatRate(targetRate) .. "x" .. effSuffix .. " via |cff00ccff" .. activeMode .. "|r" .. causeMsg)
+        ShowToast(string.format("Auto (%s) -> %sx%s", activeMode, FormatRate(targetRate), effSuffix), false)
       end
     end
   end

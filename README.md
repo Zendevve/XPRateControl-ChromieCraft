@@ -4,7 +4,7 @@ A clean, modern GUI addon for managing experience rate adjustments and Joyous Jo
 
 ![WoW Version](https://img.shields.io/badge/WoW-3.3.5a-blue?style=flat-square)
 ![Interface](https://img.shields.io/badge/Interface-30300-blue?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.5-green?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.6-green?style=flat-square)
 ![License](https://img.shields.io/badge/License-All_Rights_Reserved-red?style=flat-square)
 
 ---
@@ -72,7 +72,7 @@ Interface/AddOns/XPRateControl/
 - Type `/xp` in the chat window.
 
 ### Rates Tab
-- Drag the **custom slider** or type a value in the **numeric editbox** (0.00 – 2.00). Changes apply immediately on drag release, Enter key press, or focus lost.
+- Drag the **custom slider** or type a value in the **numeric editbox** (0.00 – 2.00). Changes apply immediately on drag release, Enter key press, or focus lost. With Joyous Journeys active, the hero display shows your effective rate: the set rate snaps to the server base (x1 or x2) and is boosted x1.5 (1.00x -> 1.50x, 2.00x -> 3.00x).
 - Click any **preset button** to instantly set and apply common rates (`0x`, `0.5x`, `1x`, `1.5x`, `2x`).
 
 ### Automation Tab
@@ -86,7 +86,7 @@ Interface/AddOns/XPRateControl/
   7. **ZONE / INSTANCE SCALING** — Assign rates for Open World, 5-Man Dungeons, Raids, and BGs/Arenas.
 
 ### Buffs Tab
-- Check **Enable Joyous Journeys Buff** to toggle the 50% experience gain buff. The large central card lights up when active and desaturates when inactive.
+- Check **Enable Joyous Journeys Buff** to toggle the 50% experience gain buff; while active the hero shows your effective rate (set rate snapped to the x1/x2 server base, then x1.5 — max 3.00x). The large central card lights up when active and desaturates when inactive.
 
 ### Settings Tab
 - Configure **Notifications**:
@@ -132,7 +132,7 @@ Interface/AddOns/XPRateControl/
 | `0.01x – 0.99x` | Orange | SLOW |
 | `1.00x` | Gold | BLIZZLIKE |
 | `1.01x – 1.99x` | Green | FAST |
-| `2.00x` | Cyan | MAX |
+| `2.00x - 3.00x` | Cyan | MAX |
 
 ---
 
@@ -142,6 +142,7 @@ Interface/AddOns/XPRateControl/
 The addon issues standard AzerothCore chat commands:
 - **Set XP rate** — `.w r <rate>` (Sends `1e-45` for `0x` to disable experience gain).
 - **Toggle Joyous Journeys** — `.weekendxp j <on|off>`.
+- **Effective rate** — with Joyous Journeys enabled the addon snaps the set rate to the server base (x1 or x2) and displays it boosted x1.5 (1.00x -> 1.50x, 2.00x -> 3.00x). The `.w r` command always receives the set rate (0.00 - 2.00).
 
 ### Saved Variables
 Settings persist across sessions in `XPRateControlDB`:

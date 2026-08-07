@@ -6,6 +6,8 @@ XPRate.ADDON_NAME = addonName or "XPRateControl"
 -- Rate constraints & defaults
 XPRate.RATE_MIN       = 0
 XPRate.RATE_MAX       = 2
+XPRate.JJ_MULT        = 1.5
+XPRate.JJ_RATE_MAX    = 3.0
 XPRate.RATE_STEP      = 0.01
 XPRate.DEFAULT_RATE   = 1.0
 XPRate.RATE_ZERO_SUB  = "1e-45"

@@ -111,6 +111,10 @@ function GetXPExhaustion()
   return mockXPExhaustion
 end
 
+function GetRestState()
+  return (mockXPExhaustion or 0) > 0 and 1 or 2
+end
+
 -- Mock XPRate helper functions
 XPRate.CLR = {
   cyan = {0, 0.8, 1},

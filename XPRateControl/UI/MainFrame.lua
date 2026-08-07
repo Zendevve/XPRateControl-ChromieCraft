@@ -67,7 +67,7 @@ title:SetTextColor(CLR.cyan[1], CLR.cyan[2], CLR.cyan[3])
 -- Version
 local version = titleBar:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 version:SetPoint("LEFT", title, "RIGHT", 6, 0)
-version:SetText("v1.4")
+version:SetText("v1.6")
 version:SetTextColor(CLR.dim[1], CLR.dim[2], CLR.dim[3])
 
 -- Close button

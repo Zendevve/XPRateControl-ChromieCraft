@@ -73,6 +73,8 @@ function CreateFrame(frameType, name, parent, template)
     SetBackdropBorderColor = function(self, r, g, b, a) self.edgeColor = {r, g, b, a} end,
     Show = function(self) self.shown = true end,
     Hide = function(self) self.shown = false end,
+    Disable = function() end,
+    Enable = function() end,
     IsShown = function(self) return self.shown end,
     SetShown = function(self, val) self.shown = val and true or false end,
     SetChecked = function(self, val) self.checked = val and true or false end,
@@ -164,6 +166,10 @@ end
 
 function GetXPExhaustion()
   return mockXPExhaustion
+end
+
+function GetRestState()
+  return (mockXPExhaustion or 0) > 0 and 1 or 2
 end
 
 function strtrim(s)
